@@ -42,6 +42,7 @@ main{max-width:1400px;margin:0 auto;padding:16px}
 #player.show{display:block}
 .vwrap{position:relative;background:#000;aspect-ratio:16/9;max-height:72vh;margin:0 auto}
 video{width:100%;height:100%;display:block;background:#000}
+#emb{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
 #msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--mut);background:rgba(0,0,0,.75)}
 #msg.show{display:flex}
 .pbar{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap}
@@ -88,7 +89,7 @@ footer p{text-align:center;margin:16px 0 0}
 </header>
 <main>
   <section id="player">
-    <div class="vwrap"><video id="v" controls playsinline autoplay></video><div id="msg"></div></div>
+    <div class="vwrap"><video id="v" controls playsinline autoplay></video><iframe id="emb" hidden allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" title="Live stream"></iframe><div id="msg"></div></div>
     <div class="pbar">
       <img id="plogo" alt="" hidden>
       <div class="t"><b id="pname"></b><span id="pmeta"></span></div>
@@ -106,7 +107,7 @@ footer p{text-align:center;margin:16px 0 0}
 <footer><div class="in">
   <details><summary>Live TV by category</summary><ul>{{CATLINKS}}</ul></details>
   <details><summary>Live TV by country</summary><ul>{{COUNTRYLINKS}}</ul></details>
-  <p>World TV links to publicly available streams listed by the open-source <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a> project. No video is hosted here. Some streams may be offline or geo-restricted. Channel list updated {{UPDATED}}.</p>
+  <p>World TV links to publicly available streams listed by the open-source <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a> and <a href="https://github.com/Free-TV/IPTV" target="_blank" rel="noopener">Free-TV</a> projects (free and official channels only), plus official YouTube and Dailymotion live embeds. No video is hosted here. Some streams may be offline or geo-restricted. Channel list updated {{UPDATED}}.</p>
 </div></footer>
 <script>window.PRESET={{PRESET}};</script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
@@ -213,8 +214,10 @@ function play(c){
   load(0);
 }
 function load(k){
-  const c=cur,v=$('#v'),url=c[4][k][1];$('#src').value=k;msg('');
+  const c=cur,v=$('#v'),url=c[4][k][1],em=$('#emb');$('#src').value=k;msg('');
   if(hls){hls.destroy();hls=null}
+  if(/youtube-nocookie\.com\/embed|dailymotion\.com\/player/.test(url)){v.pause();v.removeAttribute('src');v.hidden=true;em.hidden=false;em.src=url;return}
+  v.hidden=false;em.hidden=true;em.removeAttribute('src');
   const fail=()=>{if(cur!==c)return;if(k+1<c[4].length)load(k+1);else msg('This channel is offline or not available in your region right now. Please try another channel.')};
   if(window.Hls&&Hls.isSupported()){
     hls=new Hls({manifestLoadingMaxRetry:1,levelLoadingMaxRetry:2});
@@ -224,7 +227,7 @@ function load(k){
   v.play().catch(()=>{});
 }
 function msg(s){$('#msg').textContent=s;$('#msg').classList.toggle('show',!!s)}
-function stop(){if(hls){hls.destroy();hls=null}const v=$('#v');v.pause();v.removeAttribute('src');v.load();cur=null;
+function stop(){if(hls){hls.destroy();hls=null}$('#emb').removeAttribute('src');$('#emb').hidden=true;const v=$('#v');v.hidden=false;v.pause();v.removeAttribute('src');v.load();cur=null;
   $('#player').classList.remove('show');document.querySelectorAll('.card.playing').forEach(x=>x.classList.remove('playing'));
   history.replaceState(null,'',location.pathname);if(D)sync()}
 function readHash(){const id=decodeURIComponent(location.hash.slice(1));if(!id)return;const c=D.channels.find(c=>idOf(c)===id);if(c)play(c)}

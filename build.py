@@ -11,12 +11,14 @@ RAW, SITE = os.path.join(ROOT, "raw"), os.path.join(ROOT, "site")
 BASE = os.environ.get("WTV_BASE", "https://world-tv-ebon.vercel.app").rstrip("/")
 FILES = ["streams", "channels", "logos", "countries", "categories"]
 # Free/official cricket channels present in the iptv-org list (exact channel names).
+FREETV_URL = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"  # official free channels only
 CRICKET = {"DD Sports", "Willow", "Willow Sports", "PTV Sports", "T Sports", "Cricket Gold"}
 
 os.makedirs(RAW, exist_ok=True)
 if "--fetch" in sys.argv:
     for f in FILES:
         urllib.request.urlretrieve(f"https://iptv-org.github.io/api/{f}.json", os.path.join(RAW, f + ".json"))
+    urllib.request.urlretrieve(FREETV_URL, os.path.join(RAW, "freetv.m3u8"))
 
 load = lambda n: json.load(open(os.path.join(RAW, n + ".json"), encoding="utf-8"))
 streams, channels, logos, countries, cats = (load(f) for f in FILES)
@@ -39,6 +41,101 @@ for s in streams:
     key = s["channel"] or s["title"]
     g = groups.setdefault(key, {"c": c, "title": s["title"], "urls": []})
     g["urls"].append((qrank(s["quality"]), s["quality"] or "", u))
+
+# ---------- Free-TV/IPTV (github.com/Free-TV/IPTV): only officially free channels ----------
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537.36", "Cookie": "CONSENT=YES+1; SOCS=CAI"}
+
+
+def yt_resolve(u):
+    """Return an official embed URL for a YouTube/Dailymotion live link, or None."""
+    m = re.search(r"dailymotion\.com/video/([a-zA-Z0-9]+)", u)
+    if m:
+        return f"https://geo.dailymotion.com/player.html?video={m.group(1)}"
+    m = re.search(r"youtube\.com/watch\?v=([\w-]{11})", u) or re.search(r"youtu\.be/([\w-]{11})", u)
+    if m:
+        return f"https://www.youtube-nocookie.com/embed/{m.group(1)}?autoplay=1"
+    m = re.search(r"youtube\.com/channel/(UC[\w-]{22})", u)
+    if not m:
+        try:
+            page = urllib.request.urlopen(urllib.request.Request(re.sub(r"/live/?$", "", u), headers=UA), timeout=15).read().decode("utf-8", "ignore")
+            m = re.search(r'<link rel="canonical" href="https://www\.youtube\.com/channel/(UC[\w-]{22})"', page) or re.search(r'"externalId":"(UC[\w-]{22})"', page)
+        except Exception:
+            m = None
+    return f"https://www.youtube-nocookie.com/embed/live_stream?channel={m.group(1)}&autoplay=1" if m else None
+
+
+# Resolved embed URLs are cached in a committed file so a CI run where YouTube blocks lookups keeps them.
+YT_CACHE = os.path.join(ROOT, "embed_cache.json")
+yt_cache = json.load(open(YT_CACHE, encoding="utf-8")) if os.path.exists(YT_CACHE) else {}
+
+
+def yt_cached(u):
+    r = yt_resolve(u)
+    return r or yt_cache.get(u)
+
+
+ftv_path = os.path.join(RAW, "freetv.m3u8")
+ftv_added = ftv_new = 0
+if os.path.exists(ftv_path):
+    import concurrent.futures as cf
+    lines = open(ftv_path, encoding="utf-8").read().splitlines()
+    ents, inf = [], None
+    for l in lines:
+        if l.startswith("#EXTINF"):
+            inf = l
+        elif inf and l.strip() and not l.startswith("#"):
+            ents.append((inf, l.strip())); inf = None
+    attr = lambda inf, k: (re.search(k + r'="([^"]*)"', inf) or [None, ""])[1]
+    ents = [e for e in ents if e[1].startswith("https://") and not attr(e[0], "group-title").startswith("VOD")]
+    embeds = [e[1] for e in ents if re.search(r"youtu|dailymotion", e[1])]
+    with cf.ThreadPoolExecutor(16) as ex:
+        emb = dict(zip(embeds, ex.map(yt_cached, embeds)))
+    json.dump({k: v for k, v in sorted(emb.items()) if v}, open(YT_CACHE, "w", encoding="utf-8"), indent=0)
+    code_ok = {c["code"] for c in countries}
+    by_name = {}
+    for k, g in groups.items():
+        nm = (g["c"]["name"] if g["c"] else g["title"]).lower()
+        by_name.setdefault((nm, g["c"]["country"] if g["c"] else ""), k)
+    known_urls = {x[2] for g in groups.values() for x in g["urls"]}
+    for inf, u in ents:
+        raw_name = inf.rsplit(",", 1)[-1]
+        geo, sd = "Ⓖ" in raw_name, "Ⓢ" in raw_name
+        name = re.sub(r"[①-⓿]", "", re.sub(r"\s*\[[^\]]*\]", "", raw_name)).strip()
+        if u in emb:
+            u, q, rank = emb[u], ("Dailymotion" if "dailymotion" in u else "YouTube"), -1
+            if not u:
+                continue
+        elif ".m3u8" in u:
+            q, rank = ("SD" if sd else ""), 0
+        else:
+            continue
+        if geo:
+            q = (q + " geo").strip()
+        if u in known_urls:
+            continue
+        tid = attr(inf, "tvg-id")
+        cc = attr(inf, "tvg-country").split(";")[0].upper()
+        cc = cc if cc in code_ok else ""
+        if tid in ch:
+            if ch[tid]["is_nsfw"] or ch[tid]["closed"]:
+                continue
+            key = tid
+            groups.setdefault(key, {"c": ch[tid], "title": name, "urls": []})
+        else:
+            key = by_name.get((name.lower(), cc))
+            if not key:
+                grp = attr(inf, "group-title").lower()
+                key = f"ftv:{cc}:{name}"
+                by_name[(name.lower(), cc)] = key
+                groups[key] = {"c": {"name": name, "country": cc, "categories": [grp] if grp in {c["id"] for c in cats} else [],
+                                     "is_nsfw": False, "closed": False}, "title": name, "urls": []}
+                logo_url = attr(inf, "tvg-logo")
+                if logo_url.startswith("https"):
+                    logo[key] = logo_url
+                ftv_new += 1
+        groups[key]["urls"].append((rank, q, u))
+        known_urls.add(u)
+        ftv_added += 1
 
 cat_ids = [c["id"] for c in cats]
 cidx = {c: i for i, c in enumerate(cat_ids)}
@@ -192,5 +289,6 @@ if not os.path.exists(og):
     except ImportError:
         pass
 
+print("Free-TV: +%d sources, %d new channels" % (ftv_added, ftv_new))
 print(len(items), "channels,", len(country_list), "countries,", len(paths), "pages,",
       os.path.getsize(os.path.join(SITE, "data.json")) // 1024, "KB data")
