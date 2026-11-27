@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World TV – Free Live TV Channels</title>
+<meta name="description" content="Watch thousands of free, publicly available live TV channels from around the world. Filter by country and category.">
+<meta name="theme-color" content="#0b0d12">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<style>
+:root{--bg:#0b0d12;--bg2:#141821;--bg3:#1c2130;--line:#262c3b;--tx:#e8ebf2;--mut:#8b93a7;--acc:#4f8cff;--red:#ff4d5e}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:10px 16px;background:rgba(11,13,18,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{font-weight:800;font-size:18px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;margin-right:6px;cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 0 0 rgba(255,77,94,.6);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(255,77,94,0)}100%{box-shadow:0 0 0 0 rgba(255,77,94,0)}}
+#q{flex:1 1 220px;min-width:0;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;outline:none}
+#q:focus,select:focus{border-color:var(--acc)}
+select{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-width:190px}
+.chip{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+main{max-width:1400px;margin:0 auto;padding:16px}
+#player{display:none;margin-bottom:18px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+#player.show{display:block}
+.vwrap{position:relative;background:#000;aspect-ratio:16/9;max-height:72vh;margin:0 auto}
+video{width:100%;height:100%;display:block;background:#000}
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--mut);background:rgba(0,0,0,.75)}
+#msg.show{display:flex}
+.pbar{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap}
+.pbar img{width:40px;height:40px;object-fit:contain;background:#fff1;border-radius:6px}
+.pbar .t{flex:1;min-width:0}.pbar .t b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbar .t span{color:var(--mut);font-size:12px}
+.btn{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover,.chip:hover{border-color:var(--acc)}
+#info{color:var(--mut);margin:0 0 12px;font-size:13px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{position:relative;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 10px 10px;cursor:pointer;text-align:center;transition:transform .12s,border-color .12s}
+.card:hover{transform:translateY(-2px);border-color:var(--acc)}
+.card.playing{border-color:var(--red)}
+.card .lg{height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.card img{max-width:100%;max-height:64px;object-fit:contain}
+.card .ph{width:56px;height:56px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:var(--mut)}
+.card .n{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .m{color:var(--mut);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fav{position:absolute;top:4px;right:6px;background:none;border:0;cursor:pointer;font-size:16px;color:var(--mut);padding:2px}
+.fav.on{color:#ffc940}
+#more{display:block;margin:18px auto;height:1px}
+.empty{color:var(--mut);text-align:center;padding:60px 0}
+footer{color:var(--mut);font-size:12px;text-align:center;padding:24px 16px 32px;border-top:1px solid var(--line);margin-top:20px}
+footer a{color:var(--mut)}
+@media(max-width:640px){header{padding:8px 10px}select{flex:1 1 40%;max-width:none}#grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.card .lg{height:48px}.card img{max-height:48px}main{padding:10px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" id="home"><span class="dot"></span>World TV</div>
+  <input id="q" type="search" placeholder="Search channels…" autocomplete="off">
+  <select id="country"><option value="">All countries</option></select>
+  <select id="cat"><option value="">All categories</option></select>
+  <button class="chip" id="favs">★ Favorites</button>
+</header>
+<main>
+  <section id="player">
+    <div class="vwrap"><video id="v" controls playsinline autoplay></video><div id="msg"></div></div>
+    <div class="pbar">
+      <img id="plogo" alt="" hidden>
+      <div class="t"><b id="pname"></b><span id="pmeta"></span></div>
+      <select id="src" title="Stream source"></select>
+      <button class="btn" id="share">Copy link</button>
+      <button class="btn" id="close">Close</button>
+    </div>
+  </section>
+  <p id="info">Loading channels…</p>
+  <div id="grid"></div>
+  <div id="more"></div>
+</main>
+<footer>World TV links to publicly available streams listed by the open-source <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a> project. No video is hosted here. Some streams may be offline or geo-restricted.</footer>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const PAGE=120;
+let D,C={},list=[],shown=0,hls=null,cur=null,favs=new Set(JSON.parse(localStorage.getItem('wtv_favs')||'[]')),favOnly=false;
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const idOf=c=>(c[1]||'xx')+':'+c[0];
+
+fetch('data.json').then(r=>r.json()).then(d=>{
+  D=d;
+  d.countries.forEach(([code,name,flag])=>C[code]=[name,flag]);
+  const counts={};d.channels.forEach(c=>counts[c[1]]=(counts[c[1]]||0)+1);
+  $('#country').insertAdjacentHTML('beforeend',d.countries.slice().sort((a,b)=>a[1].localeCompare(b[1]))
+    .map(([code,name,flag])=>`<option value="${code}">${flag} ${esc(name)} (${counts[code]||0})</option>`).join('')+
+    (counts['']?`<option value="-">🌐 Other / International (${counts['']})</option>`:''));
+  const cc={};d.channels.forEach(c=>c[2].forEach(i=>cc[i]=(cc[i]||0)+1));
+  $('#cat').insertAdjacentHTML('beforeend',d.categories.map((n,i)=>cc[i]?`<option value="${i}">${esc(n)} (${cc[i]})</option>`:'').join(''));
+  readHash();filter();
+}).catch(()=>$('#info').textContent='Could not load the channel list. Please refresh.');
+
+function filter(){
+  const q=$('#q').value.trim().toLowerCase(),co=$('#country').value,ca=$('#cat').value;
+  list=D.channels.filter(c=>(!q||c[0].toLowerCase().includes(q))&&(!co||(co==='-'?!c[1]:c[1]===co))&&(ca===''||c[2].includes(+ca))&&(!favOnly||favs.has(idOf(c))));
+  $('#grid').innerHTML='';shown=0;
+  $('#info').textContent=list.length?`${list.length.toLocaleString()} channels`:'';
+  if(!list.length)$('#grid').innerHTML=`<div class="empty" style="grid-column:1/-1">${favOnly?'No favorites yet. Tap ☆ on a channel to save it.':'No channels match your search.'}</div>`;
+  more();
+}
+function more(){
+  const html=list.slice(shown,shown+PAGE).map((c,k)=>{
+    const i=shown+k,co=C[c[1]],cats=c[2].map(x=>D.categories[x]).join(', ');
+    return `<div class="card${cur===c?' playing':''}" data-i="${i}" title="${esc(c[0])}">
+      <button class="fav${favs.has(idOf(c))?' on':''}" data-f="${i}" aria-label="Favorite">${favs.has(idOf(c))?'★':'☆'}</button>
+      <div class="lg">${c[3]?`<img loading="lazy" src="${esc(c[3])}" alt="" onerror="this.outerHTML='<div class=ph>${esc(c[0][0]||'?')}</div>'">`:`<div class="ph">${esc(c[0][0]||'?')}</div>`}</div>
+      <div class="n">${esc(c[0])}</div><div class="m">${co?co[1]+' '+esc(co[0]):'🌐'}${cats?' · '+esc(cats):''}</div></div>`;
+  }).join('');
+  $('#grid').insertAdjacentHTML('beforeend',html);shown+=PAGE;
+}
+new IntersectionObserver(e=>{if(e[0].isIntersecting&&D&&shown<list.length)more()},{rootMargin:'800px'}).observe($('#more'));
+
+$('#grid').addEventListener('click',e=>{
+  const f=e.target.closest('.fav');
+  if(f){e.stopPropagation();const c=list[f.dataset.f],id=idOf(c);favs.has(id)?favs.delete(id):favs.add(id);
+    localStorage.setItem('wtv_favs',JSON.stringify([...favs]));f.classList.toggle('on');f.textContent=favs.has(id)?'★':'☆';return}
+  const card=e.target.closest('.card');if(card)play(list[card.dataset.i]);
+});
+let t;$('#q').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(filter,180)});
+$('#country').onchange=$('#cat').onchange=filter;
+$('#favs').onclick=()=>{favOnly=!favOnly;$('#favs').classList.toggle('on',favOnly);filter()};
+$('#home').onclick=()=>{$('#q').value='';$('#country').value='';$('#cat').value='';favOnly=false;$('#favs').classList.remove('on');stop();filter()};
+$('#close').onclick=stop;
+$('#share').onclick=()=>{navigator.clipboard.writeText(location.href).then(()=>{$('#share').textContent='Copied!';setTimeout(()=>$('#share').textContent='Copy link',1500)})};
+$('#src').onchange=()=>load(+$('#src').value);
+
+function play(c){
+  cur=c;
+  document.querySelectorAll('.card.playing').forEach(x=>x.classList.remove('playing'));
+  const i=list.indexOf(c);if(i>=0)document.querySelector(`.card[data-i="${i}"]`)?.classList.add('playing');
+  const co=C[c[1]];
+  $('#pname').textContent=c[0];
+  $('#pmeta').textContent=[co?co[1]+' '+co[0]:'',c[2].map(x=>D.categories[x]).join(', ')].filter(Boolean).join(' · ');
+  const pl=$('#plogo');if(c[3]){pl.src=c[3];pl.hidden=false}else pl.hidden=true;
+  $('#src').innerHTML=c[4].map((s,k)=>`<option value="${k}">Source ${k+1}${s[0]?' · '+s[0]:''}</option>`).join('');
+  $('#src').style.display=c[4].length>1?'':'none';
+  $('#player').classList.add('show');
+  history.replaceState(null,'','#'+encodeURIComponent(idOf(c)));
+  document.title=c[0]+' – World TV';
+  window.scrollTo({top:0,behavior:'smooth'});
+  load(0);
+}
+function load(k){
+  const c=cur,v=$('#v'),url=c[4][k][1];$('#src').value=k;msg('');
+  if(hls){hls.destroy();hls=null}
+  const fail=()=>{if(cur!==c)return;if(k+1<c[4].length)load(k+1);else msg('This channel is offline or not available in your region right now. Please try another channel.')};
+  if(window.Hls&&Hls.isSupported()){
+    hls=new Hls({manifestLoadingMaxRetry:1,levelLoadingMaxRetry:2});
+    hls.on(Hls.Events.ERROR,(_,d)=>{if(d.fatal){if(d.type===Hls.ErrorTypes.MEDIA_ERROR&&!d._r){d._r=1;hls.recoverMediaError()}else fail()}});
+    hls.loadSource(url);hls.attachMedia(v);
+  }else{v.src=url;v.onerror=fail}
+  v.play().catch(()=>{});
+}
+function msg(s){$('#msg').textContent=s;$('#msg').classList.toggle('show',!!s)}
+function stop(){if(hls){hls.destroy();hls=null}const v=$('#v');v.pause();v.removeAttribute('src');v.load();cur=null;
+  $('#player').classList.remove('show');document.querySelectorAll('.card.playing').forEach(x=>x.classList.remove('playing'));
+  history.replaceState(null,'',location.pathname);document.title='World TV – Free Live TV Channels'}
+function readHash(){const id=decodeURIComponent(location.hash.slice(1));if(!id)return;const c=D.channels.find(c=>idOf(c)===id);if(c)play(c)}
+</script>
+</body>
+</html>
