@@ -36,7 +36,12 @@ cidx = {c: i for i, c in enumerate(cat_ids)}
 items = []
 for key, g in groups.items():
     c = g["c"]
-    urls = sorted(g["urls"], key=lambda x: -x[0])[:4]
+    seen, urls = set(), []
+    for x in sorted(g["urls"], key=lambda x: -x[0]):
+        if x[2] not in seen:
+            seen.add(x[2]); urls.append(x)
+    is_sport = bool(c and "sports" in c["categories"])
+    urls = urls[: 25 if is_sport else 10]
     items.append([
         c["name"] if c else g["title"],
         c["country"] if c else "",

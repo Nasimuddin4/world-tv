@@ -59,6 +59,7 @@ footer a{color:var(--mut)}
   <input id="q" type="search" placeholder="Search channels…" autocomplete="off">
   <select id="country"><option value="">All countries</option></select>
   <select id="cat"><option value="">All categories</option></select>
+  <button class="chip" id="sports">⚽ Sports</button>
   <button class="chip" id="favs">★ Favorites</button>
 </header>
 <main>
@@ -100,8 +101,11 @@ fetch('data.json').then(r=>r.json()).then(d=>{
 function filter(){
   const q=$('#q').value.trim().toLowerCase(),co=$('#country').value,ca=$('#cat').value;
   list=D.channels.filter(c=>(!q||c[0].toLowerCase().includes(q))&&(!co||(co==='-'?!c[1]:c[1]===co))&&(ca===''||c[2].includes(+ca))&&(!favOnly||favs.has(idOf(c))));
+  const sp=ca!==''&&D.categories[+ca]==='Sports';
+  if(sp)list.sort((a,b)=>b[4].length-a[4].length||a[0].localeCompare(b[0]));
+  $('#sports').classList.toggle('on',sp);
   $('#grid').innerHTML='';shown=0;
-  $('#info').textContent=list.length?`${list.length.toLocaleString()} channels`:'';
+  $('#info').textContent=list.length?`${list.length.toLocaleString()} channels${sp?' · most sources first':''}`:'';
   if(!list.length)$('#grid').innerHTML=`<div class="empty" style="grid-column:1/-1">${favOnly?'No favorites yet. Tap ☆ on a channel to save it.':'No channels match your search.'}</div>`;
   more();
 }
@@ -125,6 +129,7 @@ $('#grid').addEventListener('click',e=>{
 });
 let t;$('#q').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(filter,180)});
 $('#country').onchange=$('#cat').onchange=filter;
+$('#sports').onclick=()=>{const i=D.categories.indexOf('Sports');$('#cat').value=$('#cat').value===String(i)?'':i;filter()};
 $('#favs').onclick=()=>{favOnly=!favOnly;$('#favs').classList.toggle('on',favOnly);filter()};
 $('#home').onclick=()=>{$('#q').value='';$('#country').value='';$('#cat').value='';favOnly=false;$('#favs').classList.remove('on');stop();filter()};
 $('#close').onclick=stop;
