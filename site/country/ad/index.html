@@ -35,6 +35,7 @@ header{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center
 #q:focus,select:focus{border-color:var(--acc)}
 select{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-width:190px}
 .chip{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.chips{display:flex;gap:8px}
 .chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
 main{max-width:1400px;margin:0 auto;padding:16px}
 #player{display:none;margin-bottom:18px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -72,7 +73,7 @@ footer details{margin:0 0 12px}
 footer summary{cursor:pointer;color:var(--tx);font-weight:600;margin-bottom:8px}
 footer ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:6px 14px}
 footer p{text-align:center;margin:16px 0 0}
-@media(max-width:640px){header{padding:8px 10px}select{flex:1 1 40%;max-width:none}#grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.card .lg{height:48px}.card img{max-height:48px}main{padding:10px}h1{font-size:17px}}
+@media(max-width:640px){header{padding:8px 10px;gap:8px}select{flex:1 1 40%;max-width:none}.chips{flex:1 1 100%;overflow-x:auto}.chip{flex:1 0 auto;padding:7px 10px}#grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.card .lg{height:48px}.card img{max-height:48px}main{padding:10px}h1{font-size:17px}}
 </style>
 </head>
 <body>
@@ -81,9 +82,9 @@ footer p{text-align:center;margin:16px 0 0}
   <input id="q" type="search" placeholder="Search channels…" autocomplete="off" aria-label="Search channels">
   <select id="country" aria-label="Country"><option value="">All countries</option></select>
   <select id="cat" aria-label="Category"><option value="">All categories</option></select>
-  <button class="chip" id="sports">⚽ Sports</button>
+  <div class="chips"><button class="chip" id="sports">⚽ Sports</button>
   <button class="chip" id="cricket">🏏 Cricket</button>
-  <button class="chip" id="favs">★ Favorites</button>
+  <button class="chip" id="favs">★ Favorites</button></div>
 </header>
 <main>
   <section id="player">
@@ -138,6 +139,7 @@ function label(){
   if(favOnly)return 'Your Favorite Channels';
   if(co&&co!=='-'&&ca==='')return `${C[co][0]} Live TV Channels`;
   if(!co&&ca!=='')return `${D.categories[+ca]} Live TV Channels`;
+  if(co&&co!=='-'&&ca!=='')return `${C[co][0]} ${D.categories[+ca]} Live TV Channels`;
   return 'Free Live TV Channels from Around the World';
 }
 function sync(){
